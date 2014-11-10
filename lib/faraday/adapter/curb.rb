@@ -21,7 +21,7 @@ module Faraday
         configure_timeout(client, env)
 
         client.send(*(["http_#{env[:method]}", env[:body]].compact))
-        save_response(env, client.response_code, client.body_str, parse_header_string(client.header_str).last)
+        save_response(env, client.response_code, client.body_str, parse_headers(client.header_str))
       rescue Curl::Err::ConnectionFailedError => e
         raise Faraday::Error::ConnectionFailed, e
       rescue Curl::Err::TimeoutError => e
@@ -38,16 +38,13 @@ module Faraday
         client.connect_timeout  = req[:open_timeout] if req[:open_timeout]
       end
 
-      # Borrowed from Webmock's Curb adapter:
-      # http://github.com/bblimke/webmock/blob/master/lib/webmock/http_lib_adapters/curb.rb
-      def parse_header_string(header_string)
-        status, headers = nil, {}
-        return [status, headers] unless header_string
+      # Borrowed from Patron:
+      # https://github.com/toland/patron/blob/master/lib/patron/response.rb
+      def parse_headers(header_data)
+        headers = {}
 
-        header_string.split(/\r\n/).each do |header|
-          if header =~ %r|^HTTP/1.[01] \d\d\d (.*)|
-            status = $1
-          else
+        header_data.split(/\r\n/).each do |header|
+          unless header =~ %r|^HTTP/1.[01]|
             parts = header.split(':', 2)
             unless parts.empty?
               parts[1].strip! unless parts[1].nil?
@@ -61,7 +58,7 @@ module Faraday
           end
         end
 
-        [status, headers]
+        headers
       end
 
     end
