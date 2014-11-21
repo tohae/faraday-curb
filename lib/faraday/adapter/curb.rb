@@ -18,6 +18,7 @@ module Faraday
           c.headers = env[:request_headers]
         end
 
+        configure_ssl(client, env)
         configure_timeout(client, env)
 
         client.send(*(["http_#{env[:method]}", env[:body]].compact))
@@ -30,6 +31,15 @@ module Faraday
 
       def read_body(env)
         env[:body] = env[:body].read if env[:body].respond_to? :read
+      end
+
+      def configure_ssl(client, env)
+        if env[:url].scheme == 'https' && ssl = env[:ssl]
+          if ssl[:verify] == false
+            client.ssl_verify_peer = false
+            client.ssl_verify_host = 0
+          end
+        end
       end
 
       def configure_timeout(client, env)
