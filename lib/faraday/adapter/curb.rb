@@ -25,6 +25,8 @@ module Faraday
         save_response(env, client.response_code, client.body_str, parse_headers(client.header_str))
       rescue Curl::Err::ConnectionFailedError => e
         raise Faraday::Error::ConnectionFailed, e
+      rescue Curl::Err::SSLCACertificateError, Curl::Err::SSLPeerCertificateError => e
+        raise Faraday::Error::SSLError, e
       rescue Curl::Err::TimeoutError => e
         raise Faraday::Error::TimeoutError, e
       end
