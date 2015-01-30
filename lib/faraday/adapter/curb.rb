@@ -21,7 +21,13 @@ module Faraday
         configure_ssl(client, env)
         configure_timeout(client, env)
 
-        client.send(*(["http_#{env[:method]}", env[:body]].compact))
+        arguments = ["http_#{env[:method]}"]
+        if [:put, :post].include? env[:method]
+          arguments << (env[:body] || "")
+        end
+
+        client.send(*arguments)
+
         save_response(env, client.response_code, client.body_str, parse_headers(client.header_str))
       rescue Curl::Err::ConnectionFailedError => e
         raise Faraday::Error::ConnectionFailed, e
