@@ -22,7 +22,7 @@ module Faraday
         configure_timeout(client, env)
 
         arguments = ["http_#{env[:method]}"]
-        if [:put, :post].include? env[:method]
+        if [:patch, :put, :post].include? env[:method]
           arguments << (env[:body] || "")
         end
 
