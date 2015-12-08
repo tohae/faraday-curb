@@ -14,19 +14,26 @@ module Faraday
       def perform_request(env)
         read_body env
 
-        client = ::Curl::Easy.new(env[:url].to_s) do |c|
+        method = env[:method].upcase.to_sym
+        url = env[:url].to_s
+        post_body = env[:body] if method == :POST
+        put_body = env[:body] if method == :PUT || method == :PATCH
+        client = ::Curl.http(method, url, post_body, put_body) do |c|
           c.headers = env[:request_headers]
+
+          # Configure ssl
+          if env[:url].scheme == 'https' && ssl = env[:ssl]
+            if ssl[:verify] == false
+              c.ssl_verify_peer = false
+              c.ssl_verify_host = 0
+            end
+          end
+
+          # Set timeout
+          req = env[:request]
+          c.timeout          = req[:timeout] if req[:timeout]
+          c.connect_timeout  = req[:open_timeout] if req[:open_timeout]
         end
-
-        configure_ssl(client, env)
-        configure_timeout(client, env)
-
-        arguments = ["http_#{env[:method]}"]
-        if [:patch, :put, :post].include? env[:method]
-          arguments << (env[:body] || "")
-        end
-
-        client.send(*arguments)
 
         save_response(env, client.response_code, client.body_str, parse_headers(client.header_str))
       rescue Curl::Err::ConnectionFailedError => e
@@ -39,21 +46,6 @@ module Faraday
 
       def read_body(env)
         env[:body] = env[:body].read if env[:body].respond_to? :read
-      end
-
-      def configure_ssl(client, env)
-        if env[:url].scheme == 'https' && ssl = env[:ssl]
-          if ssl[:verify] == false
-            client.ssl_verify_peer = false
-            client.ssl_verify_host = 0
-          end
-        end
-      end
-
-      def configure_timeout(client, env)
-        req = env[:request]
-        client.timeout          = req[:timeout] if req[:timeout]
-        client.connect_timeout  = req[:open_timeout] if req[:open_timeout]
       end
 
       # Borrowed from Patron:
@@ -78,7 +70,6 @@ module Faraday
 
         headers
       end
-
     end
   end
 end
